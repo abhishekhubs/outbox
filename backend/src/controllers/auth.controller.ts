@@ -59,10 +59,11 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
       httpOnly: true,
       secure: isHttps,
       sameSite: isHttps ? 'none' : 'lax',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.redirect(`${frontendUrl}/dashboard`);
+    res.redirect(`${frontendUrl}/dashboard#token=${encodeURIComponent(token)}`);
   } catch (error: any) {
     logger.error('Google OAuth callback handling error', { error: error.message });
     res.redirect(`${frontendUrl}/?error=${encodeURIComponent(error.message || 'Authentication failed')}`);
@@ -127,20 +128,23 @@ export async function devLogin(req: Request, res: Response, next: NextFunction):
       httpOnly: true,
       secure: isHttps,
       sameSite: isHttps ? 'none' : 'lax',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.redirect(`${frontendUrl}/dashboard`);
+    res.redirect(`${frontendUrl}/dashboard#token=${encodeURIComponent(token)}`);
   } catch (error) {
     next(error);
   }
 }
 
 export async function logout(req: Request, res: Response): Promise<void> {
+  const { isHttps } = resolveOAuthUrls(req);
   res.clearCookie('token', {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: isHttps,
+    sameSite: isHttps ? 'none' : 'lax',
+    path: '/',
   });
   res.json({ success: true, message: 'Logged out successfully' });
 }

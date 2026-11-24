@@ -20,9 +20,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchCurrentUser = async () => {
     try {
       setIsLoading(true);
+      // Extract token from URL hash (#token=...) for mobile browsers that block 3rd-party cookies
+      if (window.location.hash && window.location.hash.includes('token=')) {
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const hashToken = hashParams.get('token');
+        if (hashToken) {
+          localStorage.setItem('outbox_token', hashToken);
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
       const userData = await authService.getMe();
       setUser(userData);
     } catch {
+      localStorage.removeItem('outbox_token');
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -38,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem('outbox_token');
     try {
       await authService.logout();
     } finally {
