@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useSlackStatus, useDisconnectSlack } from '../hooks/useSlack';
 import { getSlackConnectUrl } from '../services/slack.service';
+import { API_URL } from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { CheckCircle2, AlertTriangle, ExternalLink, Shield } from 'lucide-react';
@@ -135,7 +136,7 @@ export const SettingsPage: React.FC = () => {
             </p>
           </div>
           <a
-            href="http://localhost:5000/api/admin/queues"
+            href={`${API_URL}/admin/queues`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50 transition-colors"
