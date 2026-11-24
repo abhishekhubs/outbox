@@ -474,5 +474,4 @@ npm test
 
 - **Ethereal Previews:** Ethereal is intended for staging and testing; for production, replace SMTP credentials with AWS SES, SendGrid, or Google Workspace SMTP.
 - **OAuth Credentials:** Valid Google Cloud and Slack Developer credentials are required for live OAuth exchanges.
-#   o u t b o x  
- 
+#
