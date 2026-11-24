@@ -10,11 +10,11 @@ const SCOPES = ['chat:write', 'channels:read'];
 /**
  * Build Slack OAuth2 authorization URL.
  */
-export function buildSlackAuthUrl(state: string): string {
+export function buildSlackAuthUrl(state: string, redirectUri?: string): string {
   const params = new URLSearchParams({
     client_id: env.SLACK_CLIENT_ID,
     scope: SCOPES.join(','),
-    redirect_uri: env.SLACK_CALLBACK_URL,
+    redirect_uri: redirectUri || env.SLACK_CALLBACK_URL,
     state,
   });
 
@@ -24,14 +24,14 @@ export function buildSlackAuthUrl(state: string): string {
 /**
  * Exchange authorization code for Slack access token.
  */
-export async function exchangeSlackCode(code: string): Promise<SlackOAuthResponse> {
+export async function exchangeSlackCode(code: string, redirectUri?: string): Promise<SlackOAuthResponse> {
   const { data } = await axios.post<SlackOAuthResponse>(
     SLACK_TOKEN_URL,
     new URLSearchParams({
       code,
       client_id: env.SLACK_CLIENT_ID,
       client_secret: env.SLACK_CLIENT_SECRET,
-      redirect_uri: env.SLACK_CALLBACK_URL,
+      redirect_uri: redirectUri || env.SLACK_CALLBACK_URL,
     }).toString(),
     {
       headers: {

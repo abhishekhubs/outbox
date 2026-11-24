@@ -15,11 +15,11 @@ const SLACK_CHAT_POST_URL = 'https://slack.com/api/chat.postMessage';
 /**
  * Generate Slack OAuth URL with state for a user.
  */
-export async function getSlackAuthUrl(userId: string): Promise<string> {
+export async function getSlackAuthUrl(userId: string, redirectUri?: string): Promise<string> {
   const state = uuidv4();
   const redis = getRedis();
   await redis.set(`slack:state:${state}`, userId, 'EX', SLACK_STATE_TTL);
-  return buildSlackAuthUrl(state);
+  return buildSlackAuthUrl(state, redirectUri);
 }
 
 /**
@@ -36,7 +36,8 @@ export async function getUserIdBySlackState(state: string): Promise<string | nul
 export async function handleSlackCallback(
   code: string,
   state: string,
-  userId: string
+  userId: string,
+  redirectUri?: string
 ): Promise<void> {
   // Validate state
   const redis = getRedis();
@@ -53,7 +54,7 @@ export async function handleSlackCallback(
   await redis.del(stateKey);
 
   // Exchange code for token
-  const tokenData = await exchangeSlackCode(code);
+  const tokenData = await exchangeSlackCode(code, redirectUri);
 
   // Encrypt the access token
   const encryptedAccessToken = encrypt(tokenData.access_token);
