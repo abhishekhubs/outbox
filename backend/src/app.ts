@@ -196,7 +196,67 @@ export function createApp(): express.Application {
       serverAdapter.getRouter()
     );
   } catch (bullErr) {
-    logger.warn('Bull Board UI could not be mounted in this environment', { error: bullErr });
+    logger.warn('Bull Board UI could not be mounted in this environment, serving fallback monitor', { error: bullErr });
+    app.get('/api/admin/queues', authenticate, async (_req, res) => {
+      try {
+        const counts = await emailQueue.getJobCounts('active', 'waiting', 'delayed', 'completed', 'failed', 'paused');
+        const jobs = await emailQueue.getJobs(['active', 'waiting', 'delayed', 'completed', 'failed'], 0, 25, true);
+        const rowsHtml = jobs
+          .map(
+            (job) => `
+              <tr>
+                <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;font-family:monospace;font-size:12px;">${job.id || '-'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:12px;">${job.name}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;font-family:monospace;font-size:12px;">${job.data?.emailId || '-'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#6b7280;">${job.delay ? `${Math.round(job.delay / 1000)}s` : '0s'}</td>
+              </tr>`
+          )
+          .join('');
+        res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Queue Monitor - Outbox</title>
+  <style>
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#fafafa; color:#171717; }
+    .header { background:#fff; border-bottom:1px solid #e5e7eb; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .container { max-width:960px; margin:28px auto; padding:0 20px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:24px; }
+    .stat { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; }
+    .stat-label { font-size:11px; text-transform:uppercase; color:#737373; font-weight:600; }
+    .stat-val { font-size:22px; font-weight:700; margin-top:4px; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
+    table { width:100%; border-collapse:collapse; text-align:left; }
+    th { padding:10px 14px; background:#fafafa; border-bottom:1px solid #e5e7eb; font-size:11px; text-transform:uppercase; color:#737373; }
+    a.btn { font-size:12px; color:#374151; text-decoration:none; border:1px solid #e5e7eb; padding:6px 12px; border-radius:6px; background:#fff; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <strong>Outbox Queue Monitor (email-queue)</strong>
+    <a class="btn" href="${env.FRONTEND_URL || 'https://outbox-steel.vercel.app'}/dashboard">&larr; Back to Outbox</a>
+  </div>
+  <div class="container">
+    <div class="grid">
+      <div class="stat"><div class="stat-label">Active</div><div class="stat-val">${counts.active ?? 0}</div></div>
+      <div class="stat"><div class="stat-label">Waiting</div><div class="stat-val">${counts.waiting ?? 0}</div></div>
+      <div class="stat"><div class="stat-label">Delayed</div><div class="stat-val">${counts.delayed ?? 0}</div></div>
+      <div class="stat"><div class="stat-label">Completed</div><div class="stat-val">${counts.completed ?? 0}</div></div>
+      <div class="stat"><div class="stat-label">Failed</div><div class="stat-val">${counts.failed ?? 0}</div></div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Job ID</th><th>Name</th><th>Email ID</th><th>Delay</th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="4" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No jobs currently in queue</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>`);
+      } catch (err: any) {
+        res.status(500).json({ success: false, message: err?.message || 'Queue monitor error' });
+      }
+    });
   }
   app.get('/admin/queues', (_req, res) => res.redirect('/api/admin/queues'));
 
