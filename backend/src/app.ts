@@ -56,6 +56,15 @@ export function createApp(): express.Application {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(cookieParser());
 
+  const resolveFrontendUrl = (req?: express.Request) => {
+    const host = req?.get('x-forwarded-host') || req?.get('host') || '';
+    const isRemote = Boolean(host && !host.includes('localhost') && !host.includes('127.0.0.1'));
+    if ((isRemote || process.env.VERCEL) && env.FRONTEND_URL.includes('localhost')) {
+      return 'https://outbox-steel.vercel.app';
+    }
+    return env.FRONTEND_URL || 'https://outbox-steel.vercel.app';
+  };
+
   // Bull Board for queue monitoring (mounted at /api/admin/queues, protected)
   try {
     const serverAdapter = new ExpressAdapter();
@@ -68,7 +77,7 @@ export function createApp(): express.Application {
         uiConfig: {
           boardTitle: 'Queue Monitor',
           miscLinks: [
-            { text: '← Outbox Dashboard', url: env.FRONTEND_URL || 'https://outbox-steel.vercel.app' },
+            { text: '← Outbox Dashboard', url: resolveFrontendUrl() },
           ],
         },
       },
@@ -197,8 +206,9 @@ export function createApp(): express.Application {
     );
   } catch (bullErr) {
     logger.warn('Bull Board UI could not be mounted in this environment, serving fallback monitor', { error: bullErr });
-    app.get('/api/admin/queues', authenticate, async (_req, res) => {
+    app.get('/api/admin/queues', authenticate, async (req, res) => {
       try {
+        const frontendUrl = resolveFrontendUrl(req);
         const counts = await emailQueue.getJobCounts('active', 'waiting', 'delayed', 'completed', 'failed', 'paused');
         const jobs = await emailQueue.getJobs(['active', 'waiting', 'delayed', 'completed', 'failed'], 0, 25, true);
         const rowsHtml = jobs
@@ -234,7 +244,7 @@ export function createApp(): express.Application {
 <body>
   <div class="header">
     <strong>Outbox Queue Monitor (email-queue)</strong>
-    <a class="btn" href="${env.FRONTEND_URL || 'https://outbox-steel.vercel.app'}/dashboard">&larr; Back to Outbox</a>
+    <a class="btn" href="${frontendUrl}/dashboard">&larr; Back to Outbox</a>
   </div>
   <div class="container">
     <div class="grid">
@@ -262,6 +272,7 @@ export function createApp(): express.Application {
 
   // Root endpoint: friendly landing page & navigation
   app.get('/', (req, res) => {
+    const frontendUrl = resolveFrontendUrl(req);
     if (req.accepts('html')) {
       return res.send(`
         <!DOCTYPE html>
@@ -368,7 +379,7 @@ export function createApp(): express.Application {
             <h1>Outbox Email Scheduler API</h1>
             <p>You have accessed the backend API server running on port 5000. To use the email campaign dashboard, compose emails, and view scheduled leads, open the frontend app below:</p>
             
-            <a href="${env.FRONTEND_URL || 'http://localhost:5173'}" class="btn btn-primary">Open Frontend Dashboard (Port 5173) &rarr;</a>
+            <a href="${frontendUrl}" class="btn btn-primary">Open Frontend Dashboard &rarr;</a>
             <a href="/api/health" class="btn btn-secondary">System Health Check (/api/health)</a>
             <a href="/api/admin/queues" class="btn btn-secondary">BullMQ Queue Monitor (/api/admin/queues)</a>
             
@@ -385,7 +396,7 @@ export function createApp(): express.Application {
       name: 'Outbox Email Scheduler & Sending Platform API',
       status: 'online',
       version: '1.0.0',
-      frontendUrl: env.FRONTEND_URL || 'http://localhost:5173',
+      frontendUrl,
       endpoints: {
         health: '/api/health',
         queues: '/api/admin/queues',
