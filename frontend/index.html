@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Outbox - Email Scheduling Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      /* Smooth minimalist light theme loading before bundle mounts */
+      body {
+        margin: 0;
+        background-color: #fafafa;
+        color: #171717;
+      }
+      #root:empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #fafafa;
+      }
+      #root:empty::after {
+        content: "";
+        width: 34px;
+        height: 34px;
+        border: 2.5px solid #e5e5e5;
+        border-top-color: #00a84d;
+        border-radius: 50%;
+        animation: outbox-spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      @keyframes outbox-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body class="bg-[#fafafa] text-neutral-900 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

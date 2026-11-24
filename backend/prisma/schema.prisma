@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  googleId  String   @unique
+  email     String   @unique
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  senders          Sender[]
+  campaigns        EmailCampaign[]
+  scheduledEmails  ScheduledEmail[]
+  slackIntegration SlackIntegration?
+
+  @@index([googleId])
+  @@index([email])
+}
+
+model Sender {
+  id                String   @id @default(uuid())
+  userId            String
+  email             String
+  displayName       String
+  smtpHost          String   @default("smtp.ethereal.email")
+  smtpPort          Int      @default(587)
+  smtpUser          String
+  encryptedSmtpPass String
+  hourlyLimit       Int      @default(200)
+  minimumSendDelay  Int      @default(2000)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledEmails ScheduledEmail[]
+
+  @@unique([userId, email])
+  @@index([userId])
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  cancelled
+}
+
+model EmailCampaign {
+  id                 String         @id @default(uuid())
+  userId             String
+  subject            String
+  body               String         @db.Text
+  startTime          DateTime
+  delayBetweenEmails Int            @default(2000)
+  hourlyLimit        Int            @default(200)
+  status             CampaignStatus @default(active)
+  totalEmails        Int            @default(0)
+  sentCount          Int            @default(0)
+  failedCount        Int            @default(0)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledEmails ScheduledEmail[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum EmailStatus {
+  scheduled
+  processing
+  sent
+  failed
+  retrying
+  cancelled
+}
+
+model ScheduledEmail {
+  id             String      @id @default(uuid())
+  campaignId     String
+  userId         String
+  senderId       String
+  recipient      String
+  subject        String
+  body           String      @db.Text
+  scheduledAt    DateTime
+  sentAt         DateTime?
+  status         EmailStatus @default(scheduled)
+  errorMessage   String?
+  smtpMessageId  String?
+  etherealUrl    String?
+  attachments    Json?
+  idempotencyKey String      @unique
+  bullJobId      String?
+  retryCount     Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender   Sender        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([senderId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([sentAt])
+  @@index([recipient])
+  @@index([bullJobId])
+}
+
+model SlackIntegration {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  workspaceId          String
+  workspaceName        String
+  channelId            String?
+  channelName          String?
+  botUserId            String?
+  encryptedAccessToken String
+  encryptedWebhookUrl  String?
+  connectedAt          DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([workspaceId])
+}
