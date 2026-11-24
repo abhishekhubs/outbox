@@ -28,7 +28,12 @@ export function createApp(): express.Application {
   // CORS configuration
   app.use(
     cors({
-      origin: [env.FRONTEND_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: [
+        env.FRONTEND_URL,
+        'https://outbox-steel.vercel.app',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+      ],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -52,143 +57,147 @@ export function createApp(): express.Application {
   app.use(cookieParser());
 
   // Bull Board for queue monitoring (mounted at /api/admin/queues, protected)
-  const serverAdapter = new ExpressAdapter();
-  serverAdapter.setBasePath('/api/admin/queues');
+  try {
+    const serverAdapter = new ExpressAdapter();
+    serverAdapter.setBasePath('/api/admin/queues');
 
-  createBullBoard({
-    queues: [new BullMQAdapter(emailQueue as any) as any],
-    serverAdapter,
-    options: {
-      uiConfig: {
-        boardTitle: 'Queue Monitor',
-        miscLinks: [
-          { text: '← Outbox Dashboard', url: env.FRONTEND_URL || 'http://localhost:5173' },
-        ],
+    createBullBoard({
+      queues: [new BullMQAdapter(emailQueue as any) as any],
+      serverAdapter,
+      options: {
+        uiConfig: {
+          boardTitle: 'Queue Monitor',
+          miscLinks: [
+            { text: '← Outbox Dashboard', url: env.FRONTEND_URL || 'https://outbox-steel.vercel.app' },
+          ],
+        },
       },
-    },
-  });
+    });
 
-  // Protected Bull Board endpoint with Minimalist Light Theme injection
-  app.use(
-    '/api/admin/queues',
-    authenticate,
-    (req, res, next) => {
-      const originalRender = res.render.bind(res);
-      res.render = (view: string, options?: any, callback?: any) => {
-        originalRender(view, options, (err: Error, html: string) => {
-          if (err) {
-            if (typeof callback === 'function') return callback(err);
-            return next(err);
-          }
+    // Protected Bull Board endpoint with Minimalist Light Theme injection
+    app.use(
+      '/api/admin/queues',
+      authenticate,
+      (req, res, next) => {
+        const originalRender = res.render.bind(res);
+        res.render = (view: string, options?: any, callback?: any) => {
+          originalRender(view, options, (err: Error, html: string) => {
+            if (err) {
+              if (typeof callback === 'function') return callback(err);
+              return next(err);
+            }
 
-          // Minimalist Light Theme CSS injection matching Outbox's #fafafa / #ffffff aesthetic
-          const minimalistCss = `
-            <style id="outbox-minimalist-theme">
-              :root {
-                --menu-width: 230px !important;
-                --header-height: 56px !important;
-              }
-              body, #root, main {
-                background-color: #fafafa !important;
-                color: #171717 !important;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-              }
-              /* Animated minimalist loading state for Bull Board */
-              body > #root:empty, #root:has(> *:only-child:not([class])) {
-                background-color: #fafafa !important;
-                color: #525252 !important;
-              }
-              /* Top Header Navigation Bar */
-              .Qp5xkm {
-                background: #ffffff !important;
-                border-bottom: 1px solid #e5e7eb !important;
-                box-shadow: none !important;
-              }
-              /* Top-left Brand Logo box */
-              .Qp5xkm > .KmtwbG {
-                background-color: #ffffff !important;
-                color: #111827 !important;
-                border-bottom: 1px solid #e5e7eb !important;
-                border-right: 1px solid #e5e7eb !important;
-                box-shadow: none !important;
-                font-size: 0.95rem !important;
-                font-weight: 600 !important;
-                letter-spacing: -0.01em !important;
-              }
-              .Qp5xkm > .KmtwbG > .hIscLx {
-                filter: grayscale(1) !important;
-                opacity: 0.75 !important;
-              }
-              /* Left Sidebar */
-              .KM3iIV, aside, [class*="sidebar"], [class*="Sidebar"] {
-                background: #ffffff !important;
-                border-right: 1px solid #e5e7eb !important;
-                box-shadow: none !important;
-                color: #525252 !important;
-              }
-              /* QUEUES section heading */
-              .KM3iIV ._SQRTj {
-                color: #9ca3af !important;
-                font-size: 10px !important;
-                font-weight: 600 !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.05em !important;
-                padding: 0 1rem 0.5rem !important;
-              }
-              /* Sidebar Queue Items */
-              .KM3iIV a, .KM3iIV li, .KM3iIV [role="button"] {
-                color: #4b5563 !important;
-                font-size: 13px !important;
-                font-weight: 500 !important;
-                border-radius: 6px !important;
-                transition: all 0.15s ease !important;
-              }
-              .KM3iIV a:hover, .KM3iIV a[class*="active"], .KM3iIV [class*="selected"], .KM3iIV li:hover {
-                background-color: #f3f4f6 !important;
-                color: #111827 !important;
-                font-weight: 600 !important;
-              }
-              /* Queue Cards in main area */
-              main > div, [class*="Card"], [class*="card"] {
-                background-color: #ffffff !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 10px !important;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
-              }
-              /* Status pills and text */
-              main, p, span, h1, h2, h3, h4 {
-                color: #171717 !important;
-              }
-              /* Misc Links (e.g. Back to Outbox Dashboard) */
-              .Qp5xkm a {
-                color: #4b5563 !important;
-                font-size: 12px !important;
-                font-weight: 500 !important;
-                text-decoration: none !important;
-                padding: 4px 10px !important;
-                border-radius: 6px !important;
-                border: 1px solid #e5e7eb !important;
-                background: #ffffff !important;
-                transition: all 0.15s ease !important;
-              }
-              .Qp5xkm a:hover {
-                background: #f3f4f6 !important;
-                color: #111827 !important;
-              }
-            </style>
-          `;
+            // Minimalist Light Theme CSS injection matching Outbox's #fafafa / #ffffff aesthetic
+            const minimalistCss = `
+              <style id="outbox-minimalist-theme">
+                :root {
+                  --menu-width: 230px !important;
+                  --header-height: 56px !important;
+                }
+                body, #root, main {
+                  background-color: #fafafa !important;
+                  color: #171717 !important;
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                }
+                /* Animated minimalist loading state for Bull Board */
+                body > #root:empty, #root:has(> *:only-child:not([class])) {
+                  background-color: #fafafa !important;
+                  color: #525252 !important;
+                }
+                /* Top Header Navigation Bar */
+                .Qp5xkm {
+                  background: #ffffff !important;
+                  border-bottom: 1px solid #e5e7eb !important;
+                  box-shadow: none !important;
+                }
+                /* Top-left Brand Logo box */
+                .Qp5xkm > .KmtwbG {
+                  background-color: #ffffff !important;
+                  color: #111827 !important;
+                  border-bottom: 1px solid #e5e7eb !important;
+                  border-right: 1px solid #e5e7eb !important;
+                  box-shadow: none !important;
+                  font-size: 0.95rem !important;
+                  font-weight: 600 !important;
+                  letter-spacing: -0.01em !important;
+                }
+                .Qp5xkm > .KmtwbG > .hIscLx {
+                  filter: grayscale(1) !important;
+                  opacity: 0.75 !important;
+                }
+                /* Left Sidebar */
+                .KM3iIV, aside, [class*="sidebar"], [class*="Sidebar"] {
+                  background: #ffffff !important;
+                  border-right: 1px solid #e5e7eb !important;
+                  box-shadow: none !important;
+                  color: #525252 !important;
+                }
+                /* QUEUES section heading */
+                .KM3iIV ._SQRTj {
+                  color: #9ca3af !important;
+                  font-size: 10px !important;
+                  font-weight: 600 !important;
+                  text-transform: uppercase !important;
+                  letter-spacing: 0.05em !important;
+                  padding: 0 1rem 0.5rem !important;
+                }
+                /* Sidebar Queue Items */
+                .KM3iIV a, .KM3iIV li, .KM3iIV [role="button"] {
+                  color: #4b5563 !important;
+                  font-size: 13px !important;
+                  font-weight: 500 !important;
+                  border-radius: 6px !important;
+                  transition: all 0.15s ease !important;
+                }
+                .KM3iIV a:hover, .KM3iIV a[class*="active"], .KM3iIV [class*="selected"], .KM3iIV li:hover {
+                  background-color: #f3f4f6 !important;
+                  color: #111827 !important;
+                  font-weight: 600 !important;
+                }
+                /* Queue Cards in main area */
+                main > div, [class*="Card"], [class*="card"] {
+                  background-color: #ffffff !important;
+                  border: 1px solid #e5e7eb !important;
+                  border-radius: 10px !important;
+                  box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+                }
+                /* Status pills and text */
+                main, p, span, h1, h2, h3, h4 {
+                  color: #171717 !important;
+                }
+                /* Misc Links (e.g. Back to Outbox Dashboard) */
+                .Qp5xkm a {
+                  color: #4b5563 !important;
+                  font-size: 12px !important;
+                  font-weight: 500 !important;
+                  text-decoration: none !important;
+                  padding: 4px 10px !important;
+                  border-radius: 6px !important;
+                  border: 1px solid #e5e7eb !important;
+                  background: #ffffff !important;
+                  transition: all 0.15s ease !important;
+                }
+                .Qp5xkm a:hover {
+                  background: #f3f4f6 !important;
+                  color: #111827 !important;
+                }
+              </style>
+            `;
 
-          const modifiedHtml = html.replace('</head>', `${minimalistCss}</head>`);
-          if (typeof callback === 'function') {
-            return callback(null, modifiedHtml);
-          }
-          return res.send(modifiedHtml);
-        });
-      };
-      next();
-    },
-    serverAdapter.getRouter()
-  );
+            const modifiedHtml = html.replace('</head>', `${minimalistCss}</head>`);
+            if (typeof callback === 'function') {
+              return callback(null, modifiedHtml);
+            }
+            return res.send(modifiedHtml);
+          });
+        };
+        next();
+      },
+      serverAdapter.getRouter()
+    );
+  } catch (bullErr) {
+    logger.warn('Bull Board UI could not be mounted in this environment', { error: bullErr });
+  }
   app.get('/admin/queues', (_req, res) => res.redirect('/api/admin/queues'));
 
   // Root endpoint: friendly landing page & navigation

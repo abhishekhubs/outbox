@@ -78,7 +78,7 @@ export function validateEnv(): Env {
       })
       .join('\n');
 
-    if (process.env.NODE_ENV !== 'test') {
+    if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
       console.error(`\n❌ Environment validation failed:\n${errors}\n`);
       process.exit(1);
     }
