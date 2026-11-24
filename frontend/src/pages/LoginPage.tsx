@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../services/api';
 import { AlertCircle } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -23,7 +24,7 @@ export const LoginPage: React.FC = () => {
       return;
     }
     setValidationError('');
-    window.location.href = 'http://localhost:5000/api/auth/dev-login';
+    window.location.href = `${API_URL}/auth/dev-login?email=${encodeURIComponent(email.trim())}`;
   };
 
   return (

@@ -84,7 +84,31 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
 
 export async function devLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const user = await prisma.user.findFirst();
+    const { frontendUrl, isHttps } = resolveOAuthUrls(req);
+    const requestedEmail = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
+
+    let user = requestedEmail
+      ? await prisma.user.findFirst({ where: { email: { equals: requestedEmail, mode: 'insensitive' } } })
+      : null;
+
+    if (!user && requestedEmail) {
+      const displayName = requestedEmail
+        .split('@')[0]
+        .replace(/[._-]+/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      user = await prisma.user.create({
+        data: {
+          googleId: `email-${requestedEmail}`,
+          email: requestedEmail,
+          name: displayName || requestedEmail,
+        },
+      });
+    }
+
+    if (!user) {
+      user = await prisma.user.findFirst();
+    }
+
     if (!user) {
       res.status(404).json({
         success: false,
@@ -101,12 +125,12 @@ export async function devLogin(req: Request, res: Response, next: NextFunction):
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: isHttps,
+      sameSite: isHttps ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.redirect(`${env.FRONTEND_URL}/dashboard`);
+    res.redirect(`${frontendUrl}/dashboard`);
   } catch (error) {
     next(error);
   }
