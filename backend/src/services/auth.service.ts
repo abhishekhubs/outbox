@@ -12,19 +12,19 @@ const OAUTH_STATE_TTL = 600; // 10 minutes
 /**
  * Generate Google OAuth2 consent URL with CSRF state parameter.
  */
-export async function getGoogleAuthUrl(): Promise<string> {
+export async function getGoogleAuthUrl(redirectUri?: string): Promise<string> {
   const state = uuidv4();
   const redis = getRedis();
   await redis.set(`oauth:state:${state}`, '1', 'EX', OAUTH_STATE_TTL);
 
-  return buildGoogleAuthUrl(state);
+  return buildGoogleAuthUrl(state, redirectUri);
 }
 
 /**
  * Handle Google OAuth2 callback.
  * Verifies state, exchanges code for tokens, upserts user, generates JWT.
  */
-export async function handleGoogleCallback(code: string, state: string): Promise<AuthResult> {
+export async function handleGoogleCallback(code: string, state: string, redirectUri?: string): Promise<AuthResult> {
   // Validate state
   const redis = getRedis();
   const stateKey = `oauth:state:${state}`;
@@ -41,7 +41,7 @@ export async function handleGoogleCallback(code: string, state: string): Promise
   await redis.del(stateKey);
 
   // Exchange code for tokens
-  const tokens = await exchangeCodeForTokens(code);
+  const tokens = await exchangeCodeForTokens(code, redirectUri);
 
   // Get user profile
   const profile = await getGoogleUserProfile(tokens.access_token);

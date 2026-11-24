@@ -11,10 +11,10 @@ const SCOPES = ['openid', 'profile', 'email'];
 /**
  * Build Google OAuth2 authorization URL.
  */
-export function buildGoogleAuthUrl(state: string): string {
+export function buildGoogleAuthUrl(state: string, redirectUri?: string): string {
   const params = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID,
-    redirect_uri: env.GOOGLE_CALLBACK_URL,
+    redirect_uri: redirectUri || env.GOOGLE_CALLBACK_URL,
     response_type: 'code',
     scope: SCOPES.join(' '),
     access_type: 'offline',
@@ -28,12 +28,12 @@ export function buildGoogleAuthUrl(state: string): string {
 /**
  * Exchange authorization code for tokens.
  */
-export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenResponse> {
+export async function exchangeCodeForTokens(code: string, redirectUri?: string): Promise<GoogleTokenResponse> {
   const { data } = await axios.post<GoogleTokenResponse>(GOOGLE_TOKEN_URL, {
     code,
     client_id: env.GOOGLE_CLIENT_ID,
     client_secret: env.GOOGLE_CLIENT_SECRET,
-    redirect_uri: env.GOOGLE_CALLBACK_URL,
+    redirect_uri: redirectUri || env.GOOGLE_CALLBACK_URL,
     grant_type: 'authorization_code',
   });
 
