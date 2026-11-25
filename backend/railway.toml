@@ -1,0 +1,22 @@
+# Outbox BullMQ Worker — Railway Deployment Configuration
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.worker"
+
+[deploy]
+startCommand = "node dist/worker.js"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# Railway automatically provides these env vars — reference your Railway variables:
+# DATABASE_URL, REDIS_URL, JWT_SECRET, ENCRYPTION_KEY,
+# GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL,
+# SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, SLACK_BOT_TOKEN,
+# ETHEREAL_USER, ETHEREAL_PASS,
+# EMAIL_WORKER_CONCURRENCY, MIN_EMAIL_DELAY_MS,
+# MAX_EMAILS_PER_HOUR_PER_SENDER, RATE_LIMIT_WINDOW_SECONDS,
+# FRONTEND_URL, NODE_ENV=production

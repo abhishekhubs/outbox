@@ -1,0 +1,71 @@
+version: '3.9'
+
+# Local dev stack: API server + BullMQ worker + Redis
+# Usage:
+#   docker compose up           → starts all services
+#   docker compose up worker    → starts only the worker
+#   docker compose logs -f worker → tail worker logs
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: outbox-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes  # Persistence enabled
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      target: builder          # Use builder stage so dev can iterate fast
+    container_name: outbox-api
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - '5000:5000'
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+    command: node dist/server.js
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: outbox-worker
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - '9090:9090'            # Healthcheck port
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      WORKER_HEALTH_PORT: '9090'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9090/healthz']
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    command: node dist/worker.js
+
+volumes:
+  redis-data:
+    driver: local
