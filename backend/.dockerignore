@@ -1,0 +1,43 @@
+# Docker ignore for Outbox backend image
+# Keep image small and avoid leaking secrets
+
+# Source maps & IDE config
+.vscode/
+.idea/
+*.map
+
+# Local env files (NEVER bake into image)
+.env
+.env.*
+!.env.example
+
+# Dev artifacts
+node_modules/
+dist/
+coverage/
+.nyc_output/
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Logs
+*.log
+logs/
+
+# Test files
+src/**/*.test.ts
+src/**/*.spec.ts
+src/tests/
+
+# Vercel serverless entry (not needed in Docker)
+api/
+
+# Docker files themselves
+Dockerfile*
+.dockerignore
+docker-compose*
+
+# README (optional — remove if you want it inside)
+README.md

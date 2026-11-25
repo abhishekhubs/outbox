@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1: Builder — install deps + compile TypeScript
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install OS packages needed for Prisma + native modules
+RUN apk add --no-cache openssl libc6-compat
+
+# Copy package files first (layer cache)
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma/
+
+# Install ALL dependencies (including devDeps for tsc)
+RUN npm ci --legacy-peer-deps
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy source and compile
+COPY tsconfig.json ./
+COPY src ./src/
+RUN npm run build
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2: Runner — slim production image, worker only
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Install OS packages needed at runtime
+RUN apk add --no-cache openssl libc6-compat curl
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S outbox && adduser -S outbox -u 1001
+
+# Copy package files and install ONLY production deps
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma/
+RUN npm ci --omit=dev --legacy-peer-deps && npx prisma generate
+
+# Copy compiled output from builder
+COPY --from=builder /app/dist ./dist
+
+# Switch to non-root user
+USER outbox
+
+# Worker process (no HTTP port needed, but Railway needs a health signal)
+ENV NODE_ENV=production
+
+# Healthcheck: verify process is alive (Railway uses exit code)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD node -e "require('fs').statSync('/tmp/worker-alive')" || exit 1
+
+# Entry point: BullMQ standalone worker
+CMD ["node", "dist/worker.js"]
