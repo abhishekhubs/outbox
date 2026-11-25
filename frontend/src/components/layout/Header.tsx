@@ -1,19 +1,30 @@
 import React from 'react';
-import { Search, ExternalLink } from 'lucide-react';
+import { Search, ExternalLink, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
   title: string;
   onSearch?: (query: string) => void;
+  onMenuClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, onSearch }) => {
+export const Header: React.FC<HeaderProps> = ({ title, onSearch, onMenuClick }) => {
   const { user } = useAuth();
 
   return (
-    <header className="h-14 bg-white border-b border-neutral-200/80 px-6 flex items-center justify-between sticky top-0 z-10">
-      {/* Title */}
-      <div>
+    <header className="h-14 bg-white border-b border-neutral-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-10">
+      {/* Title & Mobile Hamburger */}
+      <div className="flex items-center gap-2.5">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            className="p-1.5 -ml-1.5 rounded-lg text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 md:hidden transition-colors"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         <h1 className="text-sm font-semibold text-neutral-900 tracking-tight">{title}</h1>
       </div>
 
