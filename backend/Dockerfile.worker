@@ -39,7 +39,10 @@ RUN addgroup -g 1001 -S outbox && adduser -S outbox -u 1001
 # Copy package files and install ONLY production deps
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
-RUN npm ci --omit=dev --legacy-peer-deps && npx prisma generate
+RUN npm ci --omit=dev --legacy-peer-deps --ignore-scripts
+
+# Copy generated Prisma client (query engine + types) from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
