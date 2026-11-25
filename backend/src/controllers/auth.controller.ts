@@ -54,13 +54,12 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
 
     const { token } = await authService.handleGoogleCallback(code, state, callbackUrl);
 
-    // Set secure HTTP-only cookie
     res.cookie('token', token, {
       httpOnly: true,
       secure: isHttps,
       sameSite: isHttps ? 'none' : 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.redirect(`${frontendUrl}/dashboard#token=${encodeURIComponent(token)}`);
@@ -133,6 +132,50 @@ export async function devLogin(req: Request, res: Response, next: NextFunction):
     });
 
     res.redirect(`${frontendUrl}/dashboard#token=${encodeURIComponent(token)}`);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { isHttps } = resolveOAuthUrls(req);
+    const { name, email } = req.body as { name?: string; email?: string };
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      res.status(400).json({ success: false, error: { message: 'Valid email is required', code: 'INVALID_EMAIL' } });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const displayName = (name?.trim()) ||
+      normalizedEmail.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const existing = await prisma.user.findFirst({ where: { email: { equals: normalizedEmail, mode: 'insensitive' } } });
+    if (existing) {
+      res.status(409).json({ success: false, error: { message: 'An account with this email already exists. Please log in.', code: 'USER_EXISTS' } });
+      return;
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        googleId: `email-${normalizedEmail}`,
+        email: normalizedEmail,
+        name: displayName,
+      },
+    });
+
+    const token = jwt.sign({ userId: user.id, email: user.email }, env.JWT_SECRET, { expiresIn: '7d' });
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: isHttps,
+      sameSite: isHttps ? 'none' : 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ success: true, data: { token, user: { id: user.id, name: user.name, email: user.email } } });
   } catch (error) {
     next(error);
   }
