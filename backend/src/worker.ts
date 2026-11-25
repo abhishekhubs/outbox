@@ -40,7 +40,7 @@ async function runWorkerProcess(): Promise<void> {
     logger.info('[Worker Process] Email worker is running and listening for jobs...');
 
     // 4. Start health server (Railway / Docker healthcheck)
-    const healthPort = parseInt(process.env.WORKER_HEALTH_PORT || '9090', 10);
+    const healthPort = parseInt(process.env.PORT || process.env.WORKER_HEALTH_PORT || '9090', 10);
     const healthServer = startHealthServer(healthPort);
     // Write initial alive marker
     try { fs.writeFileSync('/tmp/worker-alive', Date.now().toString()); } catch {}
